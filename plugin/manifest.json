@@ -1,0 +1,12 @@
+{
+  "name": "Pack splitter",
+  "id": "237b554e-2caf-458e-930a-4e94ea1eab33",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "isTool": true,
+  "relaunchButtons": [
+    { "command": "237b554e-2caf-458e-930a-4e94ea1eab33", "name": "Pack splitter" }
+  ],
+  "ui": "ui.html"
+}
