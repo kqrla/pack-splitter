@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pack splitter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --surface-hover: #242424;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text-secondary: #888;
+      --accent: #0d99ff;
+      --accent-hover: #3db1ff;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Poppins', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      text-transform: lowercase;
+      line-height: 1.5;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 40vh; overflow-y: auto; }
+    }
+
+    /* sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    .section-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .field label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .field input[type="range"] {
+      flex: 1;
+      max-width: 140px;
+      accent-color: var(--accent);
+    }
+    .field .value {
+      font-size: 12px;
+      color: var(--text);
+      min-width: 32px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toggle label { font-size: 13px; color: var(--text-secondary); }
+    .switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .switch .slider::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      left: 3px; bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+    .mode-tabs {
+      display: flex;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 2px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-family: inherit;
+      text-transform: lowercase;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-tab.active {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: lowercase;
+      border: none;
+      background: var(--accent);
+      color: white;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: auto;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .drop-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 8px;
+    }
+
+    /* canvas area */
+    .canvas-area {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .canvas-toolbar .info {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .canvas-toolbar .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 11px;
+      text-transform: lowercase;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-small:hover { background: var(--surface-hover); border-color: var(--accent); }
+    .canvas-viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: repeating-conic-gradient(#1a1a1a 0% 25%, #141414 0% 50%) 50% / 24px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .canvas-viewport canvas {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+    .drop-zone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      margin: 20px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone.active {
+      border-color: var(--accent);
+      background: rgba(13, 153, 255, 0.05);
+    }
+    .drop-zone.hidden { display: none; }
+    .drop-zone .icon { font-size: 48px; opacity: 0.3; }
+    .drop-zone p { font-size: 14px; color: var(--text-secondary); }
+    .drop-zone .sub { font-size: 11px; color: var(--text-secondary); opacity: 0.6; }
+
+    /* results panel */
+    .results-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .results-bar .count {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* selection rectangles on canvas */
+    .sel-rect-overlay {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(13, 153, 255, 0.08);
+      pointer-events: none;
+    }
+
+    /* output gallery */
+    .output-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 20px;
+      overflow-y: auto;
+      max-height: 200px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .output-gallery img {
+      height: 64px;
+      width: auto;
+      border-radius: 4px;
+      background: repeating-conic-gradient(#222 0% 25%, #1a1a1a 0% 50%) 50% / 8px 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .output-gallery img:hover { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">pack <span>splitter</span></div>
+
+      <div>
+        <div class="section-title">mode</div>
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="auto">auto-detect</button>
+          <button class="mode-tab" data-mode="free">split freely</button>
+        </div>
+      </div>
+
+      <div class="control-group" id="auto-controls">
+        <div class="section-title">background removal</div>
+        <div class="field">
+          <label>tolerance</label>
+          <input type="range" id="tolerance" min="0" max="100" value="25">
+          <span class="value" id="tolerance-val">25</span>
+        </div>
+        <div class="toggle">
+          <label>remove interior</label>
+          <label class="switch"><input type="checkbox" id="remove-interior" checked><span class="slider"></span></label>
+        </div>
+        <div class="section-title">detection</div>
+        <div class="field">
+          <label>padding</label>
+          <input type="range" id="padding" min="0" max="64" value="6">
+          <span class="value" id="padding-val">6px</span>
+        </div>
+      </div>
+
+      <div class="control-group" id="free-controls" style="display:none">
+        <div class="section-title">options</div>
+        <div class="toggle">
+          <label>remove background</label>
+          <label class="switch"><input type="checkbox" id="remove-bg" checked><span class="slider"></span></label>
+        </div>
+        <div class="field">
+          <label>tolerance</label>
+          <input type="range" id="tolerance-free" min="0" max="100" value="25">
+          <span class="value" id="tolerance-free-val">25</span>
+        </div>
+        <p class="drop-hint">draw rectangles on the image to select assets</p>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">output</div>
+        <div class="field">
+          <label>gap</label>
+          <input type="range" id="layout-gap" min="0" max="100" value="16">
+          <span class="value" id="layout-gap-val">16px</span>
+        </div>
+        <div class="toggle">
+          <label>vectorize</label>
+          <label class="switch"><input type="checkbox" id="vectorize"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="extract-btn" disabled>extract assets</button>
+    </aside>
+
+    <main class="canvas-area">
+      <div class="canvas-toolbar">
+        <span class="info" id="img-info">no image loaded</span>
+        <div class="actions">
+          <button class="btn-small" id="upload-btn">upload image</button>
+          <button class="btn-small" id="clear-btn" style="display:none">clear</button>
+          <button class="btn-small" id="download-all-btn" style="display:none">download all</button>
+        </div>
+      </div>
+      <div class="canvas-viewport" id="viewport">
+        <div class="drop-zone" id="drop-zone">
+          <div class="icon">+</div>
+          <p>drop an image here</p>
+          <span class="sub">png, jpg, webp — sticker sheets, asset packs, sprite sheets</span>
+        </div>
+        <canvas id="main-canvas" style="display:none"></canvas>
+      </div>
+      <div class="output-gallery" id="gallery" style="display:none"></div>
+    </main>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" style="display:none">
+
+  <script>
+    // ---- state ----
+    let mode = 'auto'
+    let sourceImg = null
+    let selections = []
+    let isDrawing = false, drawStart = null
+    let extractedAssets = []
+
+    // ---- elements ----
+    const canvas = document.getElementById('main-canvas')
+    const ctx = canvas.getContext('2d')
+    const viewport = document.getElementById('viewport')
+    const dropZone = document.getElementById('drop-zone')
+    const gallery = document.getElementById('gallery')
+    const fileInput = document.getElementById('file-input')
+    const extractBtn = document.getElementById('extract-btn')
+    const imgInfo = document.getElementById('img-info')
+
+    // ---- mode switching ----
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'))
+        tab.classList.add('active')
+        mode = tab.dataset.mode
+        document.getElementById('auto-controls').style.display = mode === 'auto' ? '' : 'none'
+        document.getElementById('free-controls').style.display = mode === 'free' ? '' : 'none'
+        if (sourceImg) renderPreview()
+      })
+    })
+
+    // ---- slider value display ----
+    function wireSlider(id, suffix) {
+      const el = document.getElementById(id)
+      const val = document.getElementById(id + '-val')
+      el.addEventListener('input', () => {
+        val.textContent = el.value + (suffix || '')
+        if (sourceImg && mode === 'auto') renderPreview()
+      })
+    }
+    wireSlider('tolerance', '')
+    wireSlider('tolerance-free', '')
+    wireSlider('padding', 'px')
+    wireSlider('layout-gap', 'px')
+    document.getElementById('remove-interior').addEventListener('change', () => { if (sourceImg && mode === 'auto') renderPreview() })
+
+    // ---- file handling ----
+    document.getElementById('upload-btn').addEventListener('click', () => fileInput.click())
+    fileInput.addEventListener('change', (e) => { if (e.target.files[0]) loadImage(e.target.files[0]) })
+
+    viewport.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('active') })
+    viewport.addEventListener('dragleave', () => dropZone.classList.remove('active'))
+    viewport.addEventListener('drop', (e) => {
+      e.preventDefault(); dropZone.classList.remove('active')
+      const file = e.dataTransfer.files[0]
+      if (file && file.type.startsWith('image/')) loadImage(file)
+    })
+
+    function loadImage(file) {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        sourceImg = img
+        selections = []
+        extractedAssets = []
+        gallery.style.display = 'none'
+        gallery.innerHTML = ''
+        dropZone.classList.add('hidden')
+        canvas.style.display = 'block'
+        document.getElementById('clear-btn').style.display = ''
+        document.getElementById('download-all-btn').style.display = 'none'
+        extractBtn.disabled = false
+        imgInfo.textContent = img.width + ' × ' + img.height + 'px'
+        renderPreview()
+      }
+      img.src = url
+    }
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      sourceImg = null; selections = []; extractedAssets = []
+      canvas.style.display = 'none'
+      dropZone.classList.remove('hidden')
+      gallery.style.display = 'none'; gallery.innerHTML = ''
+      document.getElementById('clear-btn').style.display = 'none'
+      document.getElementById('download-all-btn').style.display = 'none'
+      extractBtn.disabled = true
+      imgInfo.textContent = 'no image loaded'
+      viewport.querySelectorAll('.sel-rect-overlay').forEach(el => el.remove())
+    })
+
+    // ---- preview rendering ----
+    function renderPreview() {
+      if (!sourceImg) return
+      const maxW = viewport.clientWidth * 0.9
+      const maxH = viewport.clientHeight * 0.9
+      const scale = Math.min(1, maxW / sourceImg.width, maxH / sourceImg.height)
+      const w = Math.round(sourceImg.width * scale)
+      const h = Math.round(sourceImg.height * scale)
+      canvas.width = w; canvas.height = h
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px'
+
+      if (mode === 'auto') {
+        const tolerance = Number(document.getElementById('tolerance').value)
+        const padding = Number(document.getElementById('padding').value)
+        const includeInterior = document.getElementById('remove-interior').checked
+        // downsample for analysis
+        const maxDim = 512
+        const aScale = Math.min(1, maxDim / Math.max(sourceImg.width, sourceImg.height))
+        const sw = Math.max(1, Math.round(sourceImg.width * aScale))
+        const sh = Math.max(1, Math.round(sourceImg.height * aScale))
+        const ofc = new OffscreenCanvas(sw, sh)
+        const oCtx = ofc.getContext('2d')
+        oCtx.drawImage(sourceImg, 0, 0, sw, sh)
+        const smallData = oCtx.getImageData(0, 0, sw, sh)
+        const cleanData = removeBackground(smallData, tolerance, includeInterior)
+        const scaledPad = Math.max(0, Math.round(padding * aScale))
+        const regions = findObjects(cleanData, scaledPad)
+        // render cleaned
+        const tempOfc = new OffscreenCanvas(sw, sh)
+        tempOfc.getContext('2d').putImageData(cleanData, 0, 0)
+        ctx.clearRect(0, 0, w, h)
+        ctx.drawImage(tempOfc, 0, 0, w, h)
+        // draw bounding boxes
+        const displayScale = w / sw
+        ctx.strokeStyle = '#0d99ff'
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([4, 4])
+        regions.forEach(r => {
+          ctx.strokeRect(r.x * displayScale, r.y * displayScale, r.w * displayScale, r.h * displayScale)
+        })
+        ctx.setLineDash([])
+        imgInfo.textContent = sourceImg.width + ' × ' + sourceImg.height + 'px — ' + regions.length + ' assets detected'
+      } else {
+        ctx.drawImage(sourceImg, 0, 0, w, h)
+        renderSelectionOverlays()
+      }
+    }
+
+    // ---- free-draw ----
+    viewport.addEventListener('pointerdown', (e) => {
+      if (mode !== 'free' || !sourceImg || e.target !== canvas) return
+      isDrawing = true
+      const rect = canvas.getBoundingClientRect()
+      drawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      canvas.setPointerCapture(e.pointerId)
+    })
+    viewport.addEventListener('pointermove', (e) => {
+      if (!isDrawing || !drawStart) return
+      const rect = canvas.getBoundingClientRect()
+      const curX = e.clientX - rect.left
+      const curY = e.clientY - rect.top
+      renderPreview()
+      ctx.strokeStyle = '#0d99ff'; ctx.lineWidth = 2; ctx.setLineDash([4, 4])
+      const l = Math.min(drawStart.x, curX), t = Math.min(drawStart.y, curY)
+      ctx.strokeRect(l, t, Math.abs(curX - drawStart.x), Math.abs(curY - drawStart.y))
+      ctx.setLineDash([])
+    })
+    viewport.addEventListener('pointerup', (e) => {
+      if (!isDrawing || !drawStart) return
+      isDrawing = false
+      const rect = canvas.getBoundingClientRect()
+      const endX = e.clientX - rect.left, endY = e.clientY - rect.top
+      const scaleX = sourceImg.width / canvas.width
+      const scaleY = sourceImg.height / canvas.height
+      const l = Math.min(drawStart.x, endX) * scaleX
+      const t = Math.min(drawStart.y, endY) * scaleY
+      const w = Math.abs(endX - drawStart.x) * scaleX
+      const h = Math.abs(endY - drawStart.y) * scaleY
+      if (w >= 8 && h >= 8) {
+        selections.push({ x: Math.round(l), y: Math.round(t), w: Math.round(w), h: Math.round(h) })
+      }
+      drawStart = null
+      renderPreview()
+    })
+
+    function renderSelectionOverlays() {
+      viewport.querySelectorAll('.sel-rect-overlay').forEach(el => el.remove())
+      if (mode !== 'free') return
+      const scaleX = canvas.width / sourceImg.width
+      const scaleY = canvas.height / sourceImg.height
+      const canvasRect = canvas.getBoundingClientRect()
+      const vpRect = viewport.getBoundingClientRect()
+      const offsetX = canvasRect.left - vpRect.left
+      const offsetY = canvasRect.top - vpRect.top
+      selections.forEach(sel => {
+        const div = document.createElement('div')
+        div.className = 'sel-rect-overlay'
+        div.style.left = (offsetX + sel.x * scaleX) + 'px'
+        div.style.top = (offsetY + sel.y * scaleY) + 'px'
+        div.style.width = (sel.w * scaleX) + 'px'
+        div.style.height = (sel.h * scaleY) + 'px'
+        viewport.appendChild(div)
+      })
+      imgInfo.textContent = sourceImg.width + ' × ' + sourceImg.height + 'px — ' + selections.length + ' selection' + (selections.length === 1 ? '' : 's')
+    }
+
+    // ---- extraction ----
+    extractBtn.addEventListener('click', async () => {
+      if (!sourceImg) return
+      extractBtn.disabled = true
+      extractBtn.textContent = 'processing...'
+      try {
+        await extractAssets()
+      } finally {
+        extractBtn.disabled = false
+        extractBtn.textContent = 'extract assets'
+      }
+    })
+
+    async function extractAssets() {
+      const tolerance = mode === 'free'
+        ? Number(document.getElementById('tolerance-free').value)
+        : Number(document.getElementById('tolerance').value)
+      const padding = Number(document.getElementById('padding').value)
+      const removeBg = mode === 'free' ? document.getElementById('remove-bg').checked : true
+      const includeInterior = document.getElementById('remove-interior').checked
+      const vectorize = document.getElementById('vectorize').checked
+
+      const fullCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
+      const fullCtx = fullCanvas.getContext('2d')
+      fullCtx.drawImage(sourceImg, 0, 0)
+      const fullData = fullCtx.getImageData(0, 0, sourceImg.width, sourceImg.height)
+
+      let regions
+      if (mode === 'free' && selections.length > 0) {
+        regions = selections
+      } else {
+        const maxDim = 1024
+        const scale = Math.min(1, maxDim / Math.max(sourceImg.width, sourceImg.height))
+        const sw = Math.max(1, Math.round(sourceImg.width * scale))
+        const sh = Math.max(1, Math.round(sourceImg.height * scale))
+        const sCanvas = new OffscreenCanvas(sw, sh)
+        const sCtx = sCanvas.getContext('2d')
+        sCtx.drawImage(sourceImg, 0, 0, sw, sh)
+        const sData = sCtx.getImageData(0, 0, sw, sh)
+        const scaledPad = Math.max(0, Math.round(padding * scale))
+        const cleanData = removeBackground(sData, tolerance, includeInterior)
+        const raw = findObjects(cleanData, scaledPad)
+        regions = raw.map(r => ({
+          x: Math.round(r.x / scale), y: Math.round(r.y / scale),
+          w: Math.min(sourceImg.width - Math.round(r.x / scale), Math.round(r.w / scale)),
+          h: Math.min(sourceImg.height - Math.round(r.y / scale), Math.round(r.h / scale)),
+        })).filter(r => r.w > 0 && r.h > 0)
+      }
+
+      if (regions.length === 0) { alert('no assets detected — try adjusting tolerance'); return }
+
+      let cropSource = fullCanvas
+      if (removeBg) {
+        const cleanFullData = removeBackground(fullData, tolerance, includeInterior)
+        const cleanCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
+        cleanCanvas.getContext('2d').putImageData(cleanFullData, 0, 0)
+        cropSource = cleanCanvas
+      }
+
+      extractedAssets = []
+      for (const region of regions) {
+        const cCanvas = new OffscreenCanvas(Math.max(1, region.w), Math.max(1, region.h))
+        const cCtx = cCanvas.getContext('2d')
+        cCtx.drawImage(cropSource, region.x, region.y, region.w, region.h, 0, 0, region.w, region.h)
+        const blob = await cCanvas.convertToBlob({ type: 'image/png' })
+        const url = URL.createObjectURL(blob)
+
+        let svgData = null
+        if (vectorize) {
+          const imgData = cCtx.getImageData(0, 0, region.w, region.h)
+          svgData = traceAlphaToSvg(imgData)
+        }
+        extractedAssets.push({ url, blob, svgData, region })
+      }
+
+      // show gallery
+      gallery.innerHTML = ''
+      gallery.style.display = 'flex'
+      document.getElementById('download-all-btn').style.display = ''
+      extractedAssets.forEach((asset, i) => {
+        const img = document.createElement('img')
+        img.src = asset.url
+        img.title = 'asset ' + (i + 1) + ' — click to download'
+        img.addEventListener('click', () => downloadAsset(asset, i))
+        gallery.appendChild(img)
+      })
+      imgInfo.textContent = 'extracted ' + extractedAssets.length + ' asset' + (extractedAssets.length === 1 ? '' : 's')
+    }
+
+    function downloadAsset(asset, index) {
+      const a = document.createElement('a')
+      if (asset.svgData && document.getElementById('vectorize').checked) {
+        const svgBlob = new Blob([asset.svgData], { type: 'image/svg+xml' })
+        a.href = URL.createObjectURL(svgBlob)
+        a.download = 'asset-' + (index + 1) + '.svg'
+      } else {
+        a.href = asset.url
+        a.download = 'asset-' + (index + 1) + '.png'
+      }
+      a.click()
+    }
+
+    document.getElementById('download-all-btn').addEventListener('click', async () => {
+      for (let i = 0; i < extractedAssets.length; i++) {
+        downloadAsset(extractedAssets[i], i)
+        await new Promise(r => setTimeout(r, 100))
+      }
+    })
+
+    // ---- image processing (shared with plugin) ----
+    function removeBackground(imageData, tolerance, includeInterior) {
+      const { data, width, height } = imageData
+      const total = width * height
+      let rSum = 0, gSum = 0, bSum = 0, count = 0
+      for (let x = 0; x < width; x++) {
+        for (const y of [0, height - 1]) {
+          const i = (y * width + x) * 4
+          if (data[i + 3] > 20) { rSum += data[i]; gSum += data[i + 1]; bSum += data[i + 2]; count++ }
+        }
+      }
+      for (let y = 1; y < height - 1; y++) {
+        for (const x of [0, width - 1]) {
+          const i = (y * width + x) * 4
+          if (data[i + 3] > 20) { rSum += data[i]; gSum += data[i + 1]; bSum += data[i + 2]; count++ }
+        }
+      }
+      if (count === 0) { rSum = 255 * (width * 2 + height * 2); count = width * 2 + height * 2 }
+      const bgR = rSum / count, bgG = gSum / count, bgB = bSum / count
+      const maxDist = tolerance * 2.21
+      const isBg = new Uint8Array(total)
+      function isSimilar(idx) {
+        const a = data[idx * 4 + 3]
+        if (a < 20) return true
+        const dr = data[idx * 4] - bgR, dg = data[idx * 4 + 1] - bgG, db = data[idx * 4 + 2] - bgB
+        return Math.sqrt(dr * dr + dg * dg + db * db) <= maxDist
+      }
+      const queue = new Int32Array(total)
+      let head = 0, tail = 0
+      function seedIfBg(idx) { if (!isBg[idx] && isSimilar(idx)) { isBg[idx] = 1; queue[tail++] = idx } }
+      for (let x = 0; x < width; x++) { seedIfBg(x); seedIfBg((height - 1) * width + x) }
+      for (let y = 1; y < height - 1; y++) { seedIfBg(y * width); seedIfBg(y * width + width - 1) }
+      while (head < tail) {
+        const cur = queue[head++]
+        const x = cur % width
+        const neighbors = [cur - 1, cur + 1, cur - width, cur + width]
+        for (let ni = 0; ni < 4; ni++) {
+          const n = neighbors[ni]
+          if (n < 0 || n >= total) continue
+          const nx = n % width
+          if (ni === 0 && nx >= x) continue
+          if (ni === 1 && nx <= x) continue
+          if (!isBg[n] && isSimilar(n)) { isBg[n] = 1; queue[tail++] = n }
+        }
+      }
+      if (includeInterior) {
+        for (let i = 0; i < total; i++) { if (!isBg[i] && isSimilar(i)) isBg[i] = 1 }
+      }
+      const result = new Uint8ClampedArray(data)
+      for (let i = 0; i < total; i++) { if (isBg[i]) result[i * 4 + 3] = 0 }
+      return new ImageData(result, width, height)
+    }
+
+    function findObjects(imageData, padding) {
+      const { data, width, height } = imageData
+      const total = width * height
+      const mask = new Uint8Array(total)
+      for (let i = 0; i < total; i++) { if (data[i * 4 + 3] > 20) mask[i] = 1 }
+      const labels = new Int32Array(total).fill(-1)
+      const components = []
+      const queue = new Int32Array(total)
+      for (let start = 0; start < total; start++) {
+        if (mask[start] === 0 || labels[start] !== -1) continue
+        const label = components.length
+        let head = 0, tail = 0
+        queue[tail++] = start; labels[start] = label
+        let minX = start % width, maxX = minX, minY = (start / width) | 0, maxY = minY, size = 0
+        while (head < tail) {
+          const cur = queue[head++]; size++
+          const cx = cur % width, cy = (cur / width) | 0
+          if (cx < minX) minX = cx; if (cx > maxX) maxX = cx
+          if (cy < minY) minY = cy; if (cy > maxY) maxY = cy
+          for (const n of [cur - 1, cur + 1, cur - width, cur + width]) {
+            if (n >= 0 && n < total && mask[n] === 1 && labels[n] === -1) { labels[n] = label; queue[tail++] = n }
+          }
+        }
+        components.push({ minX, minY, maxX, maxY, size })
+      }
+      const minSize = total * 0.003
+      return components.filter(c => c.size >= minSize)
+        .map(c => ({
+          x: Math.max(0, c.minX - padding), y: Math.max(0, c.minY - padding),
+          w: Math.min(width - Math.max(0, c.minX - padding), (c.maxX - c.minX + 1) + padding * 2),
+          h: Math.min(height - Math.max(0, c.minY - padding), (c.maxY - c.minY + 1) + padding * 2),
+        }))
+        .sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x))
+    }
+
+    function traceAlphaToSvg(imageData) {
+      const { data, width, height } = imageData
+      const grid = new Uint8Array(width * height)
+      for (let i = 0; i < width * height; i++) grid[i] = data[i * 4 + 3] > 40 ? 1 : 0
+      const gw = width + 1, gh = height + 1
+      function sample(x, y) { return (x < 0 || x >= width || y < 0 || y >= height) ? 0 : grid[y * width + x] }
+      const segments = []
+      for (let y = 0; y < gh - 1; y++) {
+        for (let x = 0; x < gw - 1; x++) {
+          const tl = sample(x-1, y-1), tr = sample(x, y-1), bl = sample(x-1, y), br = sample(x, y)
+          const idx = (tl << 3) | (tr << 2) | (br << 1) | bl
+          switch (idx) {
+            case 1: case 14: segments.push([x, y+0.5, x+0.5, y+1]); break
+            case 2: case 13: segments.push([x+0.5, y+1, x+1, y+0.5]); break
+            case 3: case 12: segments.push([x, y+0.5, x+1, y+0.5]); break
+            case 4: case 11: segments.push([x+0.5, y, x+1, y+0.5]); break
+            case 5: segments.push([x, y+0.5, x+0.5, y]); segments.push([x+0.5, y+1, x+1, y+0.5]); break
+            case 6: case 9: segments.push([x+0.5, y, x+0.5, y+1]); break
+            case 7: case 8: segments.push([x, y+0.5, x+0.5, y]); break
+            case 10: segments.push([x+0.5, y, x+1, y+0.5]); segments.push([x, y+0.5, x+0.5, y+1]); break
+          }
+        }
+      }
+      if (segments.length === 0) return null
+      const paths = []; const used = new Uint8Array(segments.length)
+      function dist(x1,y1,x2,y2) { return Math.abs(x1-x2)+Math.abs(y1-y2) }
+      for (let s = 0; s < segments.length; s++) {
+        if (used[s]) continue; used[s] = 1
+        const path = [[segments[s][0], segments[s][1]], [segments[s][2], segments[s][3]]]
+        let changed = true
+        while (changed) {
+          changed = false
+          const eX = path[path.length-1][0], eY = path[path.length-1][1]
+          for (let i = 0; i < segments.length; i++) {
+            if (used[i]) continue
+            if (dist(segments[i][0], segments[i][1], eX, eY) < 0.01) { path.push([segments[i][2], segments[i][3]]); used[i] = 1; changed = true; break }
+            if (dist(segments[i][2], segments[i][3], eX, eY) < 0.01) { path.push([segments[i][0], segments[i][1]]); used[i] = 1; changed = true; break }
+          }
+        }
+        if (path.length >= 3) paths.push(path)
+      }
+      function simplify(pts, tol) {
+        if (pts.length <= 2) return pts
+        let maxD = 0, maxI = 0
+        const f = pts[0], l = pts[pts.length-1]
+        for (let i = 1; i < pts.length-1; i++) { const d = ptLineDist(pts[i],f,l); if (d > maxD) { maxD = d; maxI = i } }
+        if (maxD > tol) { const left = simplify(pts.slice(0, maxI+1), tol); const right = simplify(pts.slice(maxI), tol); return left.slice(0,-1).concat(right) }
+        return [f, l]
+      }
+      function ptLineDist(p, a, b) {
+        const dx = b[0]-a[0], dy = b[1]-a[1], len2 = dx*dx+dy*dy
+        if (len2 === 0) return Math.hypot(p[0]-a[0], p[1]-a[1])
+        let t = ((p[0]-a[0])*dx + (p[1]-a[1])*dy) / len2
+        t = Math.max(0, Math.min(1, t))
+        return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy))
+      }
+      let pathData = ''
+      for (const path of paths) {
+        const s = simplify(path, 1.0)
+        if (s.length < 2) continue
+        pathData += 'M' + s[0][0].toFixed(1) + ',' + s[0][1].toFixed(1)
+        for (let i = 1; i < s.length; i++) pathData += 'L' + s[i][0].toFixed(1) + ',' + s[i][1].toFixed(1)
+        pathData += 'Z '
+      }
+      if (!pathData) return null
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '"><path d="' + pathData.trim() + '" fill="black"/></svg>'
+    }
+  </script>
+</body>
+</html>
